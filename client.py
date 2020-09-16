@@ -48,12 +48,52 @@ class Client(ClientXMPP):
             self.disconnect()
 
     """ OTHER DEFS """
+    def logout(self):
+        self.disconnect(wait=False)
+
+    def unregister(self):
+        resp = self.Iq()
+        resp['type'] = 'set'
+        resp['register']['username'] = self.boundjid.user
+
+        try:
+            resp.send(now=True)
+            print("Account deleted ", self.boundjid, '!')
+        except IqError as e:
+            print("Could not delete account", e)
+            self.disconnect()
+        except IqTimeout:
+            print("No response from server.")
+
+    
     def login(self):
         if self.connect():
             self.process()
             print("logged in")
         else:
             print("error: couldnt log in")
+
+    def showAllUsrs(self):
+        iq = self.Iq()
+        iq['type'] = 'set'
+        iq['id'] = 'search_result'
+        iq['to'] = 'search.redes2020.xyz'
+
+        item = ET.fromstring("<query xmlns='jabber:iq:search'> \
+                                <x xmlns='jabber:x:data' type='submit'> \
+                                    <field type='hidden' var='FORM_TYPE'> \
+                                        <value>jabber:iq:search</value> \
+                                    </field> \
+                                    <field var='Username'> \
+                                        <value>1</value> \
+                                    </field> \
+                                    <field var='search'> \
+                                        <value>*</value> \
+                                    </field> \
+                                </x> \
+                              </query>")
+        iq.append(item)
+        res = iq.send()
 
 if __name__ == '__main__':
     # Hardcode domain since it wont change
@@ -82,8 +122,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Setup logging
-    #logging.basicConfig(level=args.loglevel,format='%(levelname)-8s %(message)s')
-
+    logging.basicConfig(level=args.loglevel,format='%(levelname)-8s %(message)s')
     
     xmpp = Client(args.nick + domain, args.password)
     if xmpp.connect():
@@ -98,10 +137,11 @@ if __name__ == '__main__':
     print('4. Eliminar cuenta')
 
 """
-Registrar una cuenta nueva en el servidor.
+Registrar una cuenta nueva en el servidor. 
 Iniciar sesion con una cuenta.
 Cerrar sesion con una cuenta.
 Eliminar la cuenta del servidor.
+- done
 
 Mostrar todos los usuarios / contactos y su estado.
 Agregar un usuario a los contactos.
@@ -110,5 +150,9 @@ Comunicación 1 a 1 con cualquier usuario / contacto.
 Participar en conversaciones grupales.
 Definir mensaje de presencia.
 Enviar / recibir notificaciones.
+- know what to do
+
 Enviar / recibir archivos.
+    - XEP-0096
+    https://github.com/fritzy/SleekXMPP/blob/master/sleekxmpp/plugins/xep_0096/file_transfer.py
 """
