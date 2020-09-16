@@ -65,7 +65,6 @@ class Client(ClientXMPP):
         except IqTimeout:
             print("No response from server.")
 
-    
     def login(self):
         if self.connect():
             self.process()
@@ -94,6 +93,31 @@ class Client(ClientXMPP):
                               </query>")
         iq.append(item)
         res = iq.send()
+
+    def showUsr(self, jid):
+        iq = self.Iq()
+        iq['type'] = 'set'
+        iq['id'] = 'search_result'
+        iq['to'] = 'search.redes2020.xyz'
+
+        item = ET.fromstring("<query xmlns='jabber:iq:search'> \
+                                <x xmlns='jabber:x:data' type='submit'> \
+                                    <field type='hidden' var='FORM_TYPE'> \
+                                        <value>jabber:iq:search</value> \
+                                    </field> \
+                                    <field var='Username'> \
+                                        <value>1</value> \
+                                    </field> \
+                                    <field var='search'> \
+                                        <value>" + username + "</value> \
+                                    </field> \
+                                </x> \
+                              </query>")
+        iq.append(item)
+        res = iq.send()
+
+    def addUser(self, jid):
+        self.send_presence_subscription(pto=jid)
 
 if __name__ == '__main__':
     # Hardcode domain since it wont change
@@ -141,11 +165,14 @@ Registrar una cuenta nueva en el servidor.
 Iniciar sesion con una cuenta.
 Cerrar sesion con una cuenta.
 Eliminar la cuenta del servidor.
+Agregar un usuario a los contactos.
 - done
 
 Mostrar todos los usuarios / contactos y su estado.
-Agregar un usuario a los contactos.
 Mostrar detalles de contacto de un usuario.
+- done, needs checking on how to print
+ 
+
 Comunicación 1 a 1 con cualquier usuario / contacto.
 Participar en conversaciones grupales.
 Definir mensaje de presencia.
