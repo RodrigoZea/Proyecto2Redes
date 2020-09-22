@@ -1,6 +1,8 @@
 import logging
+import threading
 from argparse import ArgumentParser
 from sleekxmpp import ClientXMPP
+from sleekxmpp.xmlstream.stanzabase import ET, ElementBase
 from sleekxmpp.exceptions import IqError, IqTimeout
 import sleekxmpp
 
@@ -16,7 +18,7 @@ class Register(ClientXMPP):
         self.register_plugin('xep_0077') # In-band Registration
 
     """ HANDLER RELATED """
-    async def start(self, event):
+    def start(self, event):
         self.send_presence()
         self.get_roster()
 
@@ -43,6 +45,9 @@ class Client(ClientXMPP):
     def __init__(self, jid, password):
         ClientXMPP.__init__(self, jid, password)
         self.users = []
+
+        self.received = set()
+        self.presences_received = threading.Event()
         
         # Handlers
         self.add_event_handler("session_start", self.start)
@@ -67,13 +72,11 @@ class Client(ClientXMPP):
         self.ssl_version = ssl.PROTOCOL_TLS
 
     """ HANDLER RELATED """
-    async def start(self, event):
+    def start(self, event):
         self.send_presence(pshow='chat', pstatus='Hola amigos!!!! Estoy online.')
         self.get_roster()
 
-    async def message(self, msg):
-        print(msg)
-
+    def message(self, msg):
         #1-to-1
         if msg['type'] in ('chat', 'normal'):
             sender = "%s@%s" % (msg['from'].user, msg['from'].domain)
@@ -155,6 +158,7 @@ class Client(ClientXMPP):
         res = iq.send()
 
     def sendMsg(self, jid, msg):
+        print(jid)
         self.send_message(mto=jid, mbody=msg, mtype='chat')
 
     def sendGroupMsg(self, room, msg):
@@ -165,7 +169,12 @@ class Client(ClientXMPP):
 
     """ NOTIFS/PRESENCE HANDLERS """
     def addUser(self, jid):
+        print("ADDING USER: " + jid)
         self.send_presence_subscription(pto=jid)
+
+    def jid_to_user(self, jid):
+        jid = str(jid)
+        return jid.split('@')[0]
 
     def presence_sub(self, presence):
         person = self.jid_to_user(presence['from'])
@@ -301,18 +310,18 @@ if __name__ == '__main__':
             xmpp.unregister()
         elif opt=="4":
             recipient = input("Ingrese usuario a agregar: ")
-            xmpp.addUser(recipient)
+            xmpp.addUser(recipient+domain)
         elif opt=="5":
             xmpp.showRoster()
         elif opt=="6":
-            showAllUsrs()
+            xmpp.showAllUsrs()
         elif opt=="7":
             recipient = input("Ingrese usuario a buscar: ")
-            showUsr(recipient)
+            xmpp.showUsr(recipient)
         elif opt=="8":
             recipient = input("Escriba el nombre del receptor: ")
             msg = input("Escriba el mensaje a escribir: ")
-            xmpp.sendMsg(recipient, msg)
+            xmpp.sendMsg(recipient+domain, msg)
         elif opt=="9":
             group = input("Escriba el nombre del grupo: ")
             msg = input("Escriba el mensaje a escribir: ")
