@@ -1,5 +1,6 @@
 import logging
 import threading
+import base64
 from argparse import ArgumentParser
 from sleekxmpp import ClientXMPP
 from sleekxmpp.xmlstream.stanzabase import ET, ElementBase
@@ -29,7 +30,6 @@ class Register(ClientXMPP):
         resp['type'] = 'set'
         resp['register']['username'] = self.boundjid.user
         resp['register']['password'] = self.password
-        print(resp)
         try:
             resp.send(now=True)
             print("Account created for", self.boundjid, '!')
@@ -80,7 +80,9 @@ class Client(ClientXMPP):
             if len(msg['body']) > 1000:
                 recv = base64.decodebytes(msg['body'].encode('utf-8'))
                 with open("saved.png", "wb") as fh:
-                    fh.write(received) 
+                    fh.write(recv) 
+
+                print("(PRIVATE) " + sender + ": " + "sent an image!")
             else:
                 sender =  "%s@%s" % (msg['from'].user, msg['from'].domain)
                 print("(PRIVATE) " + sender + ": " + msg['body'])
@@ -107,6 +109,8 @@ class Client(ClientXMPP):
             self.disconnect()
         except IqTimeout:
             print("No response from server.")
+
+        self.disconnect(wait=False)
 
     def login(self):
         if self.connect():
@@ -143,7 +147,7 @@ class Client(ClientXMPP):
         for i in res.findall('.//{jabber:x:data}value'):
             cont += 1
             txt = ''
-            if cont ==2:
+            if cont == 2:
                 temp.append(i.text)
 
             if cont == 4:
@@ -182,7 +186,7 @@ class Client(ClientXMPP):
         for i in res.findall('.//{jabber:x:data}value'):
             cont += 1
             txt = ''
-            if cont ==2:
+            if cont == 2:
                 temp.append(i.text)
 
             if cont == 4:
@@ -198,7 +202,7 @@ class Client(ClientXMPP):
 
     def sendGroupMsg(self, room, msg):
         self.send_message(mto=room, mbody=msg, mtype='groupchat')
-       print("Message sent to room " + room + "!")
+        print("Message sent to room " + room + "!")
 
     def joinCreateRoom(self, room, nick):
         self.plugin['xep_0045'].joinMUC(room, nick, wait=True)
@@ -318,6 +322,10 @@ if __name__ == '__main__':
     menu = """
         1. Registrar cuenta en el servidor.
         2. Iniciar sesion.
+        15. Cerrar sesion.
+    """
+
+    logged_menu = """
         3. Eliminar cuenta.
         4. Agregar usuario a lista de contactos.
         5. Mostrar lista de contactos.
@@ -333,9 +341,15 @@ if __name__ == '__main__':
 
     # Inicializar esto en numero cualquiera
     opt = 99
+    logged = False
 
     while opt != "15":
-        print(menu)
+        if (logged):
+            opts = logged_menu
+        else:
+            opts = menu
+
+        print(opts)
 
         opt = input("Seleccione una opcion: ")
 
@@ -349,6 +363,7 @@ if __name__ == '__main__':
                 print("Couldn't connect to server!")
         elif opt=="2":
             xmpp.login()
+            logged = True
         elif opt=="3":
             xmpp.unregister()
         elif opt=="4":
@@ -357,10 +372,21 @@ if __name__ == '__main__':
         elif opt=="5":
             xmpp.showRoster()
         elif opt=="6":
-            xmpp.showAllUsrs()
+            usrs = xmpp.showAllUsrs()
+
+            print("CONNECTED USERS:")
+            for usr in usrs:
+                print("- " + usr[0])
         elif opt=="7":
             recipient = input("Ingrese usuario a buscar: ")
-            xmpp.showUsr(recipient)
+            usrs = xmpp.showUsr(recipient)
+            
+            if (usrs):
+                print("USERS SEARCHED:")
+                for usr in usrs:
+                    print("- " + usr[0])
+            else:
+                print("There's no user matching your search!")
         elif opt=="8":
             recipient = input("Escriba el nombre del receptor: ")
             msg = input("Escriba el mensaje a escribir: ")
@@ -388,25 +414,6 @@ if __name__ == '__main__':
         elif opt=="12":
             recipient = input("Escriba el nombre del receptor: ")
             file = input("Escriba el nombre del archivo: ")
-            xmpp.sendFile(recipient, file)
+            xmpp.sendFile(recipient+domain, file)
         elif opt=="15":
             xmpp.logout()
-
-
-"""
-Registrar una cuenta nueva en el servidor. 
-Iniciar sesion con una cuenta.
-Cerrar sesion con una cuenta.
-Eliminar la cuenta del servidor.
-Agregar un usuario a los contactos.
-Definir mensaje de presencia.
-Comunicación 1 a 1 con cualquier usuario / contacto.
-Participar en conversaciones grupales.
-Enviar / recibir archivos.
-Mostrar todos los usuarios / contactos y su estado.
-Mostrar detalles de contacto de un usuario.
-- done
-
-Enviar / recibir notificaciones.
-- know what to do
-"""
