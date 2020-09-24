@@ -402,14 +402,11 @@ Agregar un usuario a los contactos.
 Definir mensaje de presencia.
 Comunicación 1 a 1 con cualquier usuario / contacto.
 Participar en conversaciones grupales.
-- done
-
 Enviar / recibir archivos.
-
 Mostrar todos los usuarios / contactos y su estado.
 Mostrar detalles de contacto de un usuario.
-- done, needs checking on how to print
- 
+- done
+
 Enviar / recibir notificaciones.
 - know what to do
 """
