@@ -55,10 +55,8 @@ class Client(ClientXMPP):
 
         # Notif handlers
         self.add_event_handler("changed_status", self.wait_for_presences)
-        self.add_event_handler("presence_unsubscribe", self.presence_unsub)
-        self.add_event_handler("presence_subscribe", self.presence_sub)
-        #self.add_event_handler("got_offline", self.got_offline)
-        #self.add_event_handler("got_online", self.got_online)
+        self.add_event_handler("presence_unsubscribe", self.presence_unsubscribe)
+        self.add_event_handler("presence_subscribe", self.presence_subscribe)
 
         # Plugins
         # Registration order doesnt matter so...
@@ -79,8 +77,13 @@ class Client(ClientXMPP):
     def message(self, msg):
         #1-to-1
         if msg['type'] in ('chat', 'normal'):
-            sender = "%s@%s" % (msg['from'].user, msg['from'].domain)
-            print("(PRIVATE) " + sender + ": " + msg['body'])
+            if len(msg['body']) > 1000:
+                recv = base64.decodebytes(msg['body'].encode('utf-8'))
+                with open("saved.png", "wb") as fh:
+                    fh.write(received) 
+            else:
+                sender =  "%s@%s" % (msg['from'].user, msg['from'].domain)
+                print("(PRIVATE) " + sender + ": " + msg['body'])
         #groups
         if str(msg['type']) == 'groupchat':
             sender = "%s@%s" % (msg['from'].user, msg['from'].domain)
@@ -134,6 +137,22 @@ class Client(ClientXMPP):
         iq.append(item)
         res = iq.send()
 
+        data = []
+        temp = []
+        cont = 0
+        for i in res.findall('.//{jabber:x:data}value'):
+            cont += 1
+            txt = ''
+            if cont ==2:
+                temp.append(i.text)
+
+            if cont == 4:
+                cont = 0
+                data.append(temp)
+                temp = []
+
+        return data
+
     # Lo mismo que todos los usuarios pero con parametro en username value.
     def showUsr(self, jid):
         iq = self.Iq()
@@ -157,31 +176,49 @@ class Client(ClientXMPP):
         iq.append(item)
         res = iq.send()
 
+        data = []
+        temp = []
+        cont = 0
+        for i in res.findall('.//{jabber:x:data}value'):
+            cont += 1
+            txt = ''
+            if cont ==2:
+                temp.append(i.text)
+
+            if cont == 4:
+                cont = 0
+                data.append(temp)
+                temp = []
+
+        return data
+
     def sendMsg(self, jid, msg):
-        print(jid)
         self.send_message(mto=jid, mbody=msg, mtype='chat')
+        print("Message sent to user " + jid + "!")
 
     def sendGroupMsg(self, room, msg):
         self.send_message(mto=room, mbody=msg, mtype='groupchat')
+       print("Message sent to room " + room + "!")
 
     def joinCreateRoom(self, room, nick):
         self.plugin['xep_0045'].joinMUC(room, nick, wait=True)
+        print("Room created!")
 
     """ NOTIFS/PRESENCE HANDLERS """
     def addUser(self, jid):
-        print("ADDING USER: " + jid)
         self.send_presence_subscription(pto=jid)
+        print("User added! " + jid)
 
     def jid_to_user(self, jid):
         jid = str(jid)
         return jid.split('@')[0]
 
-    def presence_sub(self, presence):
+    def presence_subscribe(self, presence):
         person = self.jid_to_user(presence['from'])
         print('-- %s added-- ' %(person))
         self.sendMsg(presence['from'], 'gracias por agregarme en tu lista, salu2!')
 
-    def presence_unsub(self, presence):
+    def presence_unsubscribe(self, presence):
          person = self.jid_to_user(presence['from'])
          print('-- %s removed-- ' %(person))
 
@@ -241,6 +278,12 @@ class Client(ClientXMPP):
         show_txt = shows[opt]
         self.send_presence(pshow=show_txt, pstatus=msg)
 
+    def sendFile(self, recipient, file):
+        with open(file, 'rb') as img:
+            file_ = base64.b64encode(img.read()).decode('utf-8')
+
+        self.send_message(mto=recipient, mbody=file_, msubject='send_file', mtype='chat')
+
 
 if __name__ == '__main__':
     # Hardcode domain since it wont change
@@ -259,12 +302,11 @@ if __name__ == '__main__':
                         const=logging.DEBUG, default=logging.INFO)
 
     # JID and password options.
-    parser.add_argument("-j", "--jid", dest="jid",
-                        help="JID to use")
-    parser.add_argument("-p", "--password", dest="password",
-                        help="password to use")
     parser.add_argument("-n", "--nick", dest="nick",
                         help="nickname")
+    parser.add_argument("-p", "--password", dest="password",
+                        help="password to use")
+
 
     args = parser.parse_args()
 
@@ -285,6 +327,7 @@ if __name__ == '__main__':
         9. Enviar mensaje (grupal).
         10. Cambiar estado de presencia.
         11. Crear o unirse a cuarto/grupo.
+        12. Enviar archivo.
         15. Cerrar sesion.
     """
 
@@ -342,6 +385,10 @@ if __name__ == '__main__':
             room = input("Ingrese nombre de cuarto/grupo: ")
             nick = input("Ingrese su nickname o apodo: ")
             xmpp.joinCreateRoom(room, nick)
+        elif opt=="12":
+            recipient = input("Escriba el nombre del receptor: ")
+            file = input("Escriba el nombre del archivo: ")
+            xmpp.sendFile(recipient, file)
         elif opt=="15":
             xmpp.logout()
 
@@ -353,22 +400,16 @@ Cerrar sesion con una cuenta.
 Eliminar la cuenta del servidor.
 Agregar un usuario a los contactos.
 Definir mensaje de presencia.
+Comunicación 1 a 1 con cualquier usuario / contacto.
+Participar en conversaciones grupales.
 - done
+
+Enviar / recibir archivos.
 
 Mostrar todos los usuarios / contactos y su estado.
 Mostrar detalles de contacto de un usuario.
 - done, needs checking on how to print
  
-
-Comunicación 1 a 1 con cualquier usuario / contacto.
-Participar en conversaciones grupales.
-- en teoria ya esta
-
-
 Enviar / recibir notificaciones.
 - know what to do
-
-Enviar / recibir archivos.
-    - XEP-0096
-    https://github.com/fritzy/SleekXMPP/blob/master/sleekxmpp/plugins/xep_0096/file_transfer.py
 """
