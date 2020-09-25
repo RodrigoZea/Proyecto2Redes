@@ -1,6 +1,7 @@
 import logging
 import threading
 import base64
+import time
 from argparse import ArgumentParser
 from sleekxmpp import ClientXMPP
 from sleekxmpp.xmlstream.stanzabase import ET, ElementBase
@@ -79,9 +80,12 @@ class Client(ClientXMPP):
         if msg['type'] in ('chat', 'normal'):
             if len(msg['body']) > 1000:
                 recv = base64.decodebytes(msg['body'].encode('utf-8'))
-                with open("saved.png", "wb") as fh:
+
+                img_name = "img" + str(int(time.time())) + ".png"
+                with open(img_name, "wb") as fh:
                     fh.write(recv) 
 
+                sender =  "%s@%s" % (msg['from'].user, msg['from'].domain)
                 print("(PRIVATE) " + sender + ": " + "sent an image!")
             else:
                 sender =  "%s@%s" % (msg['from'].user, msg['from'].domain)
@@ -115,9 +119,9 @@ class Client(ClientXMPP):
     def login(self):
         if self.connect():
             self.process()
-            print("logged in")
+            print("Logged in! \n")
         else:
-            print("error: couldnt log in")
+            print("Error: Couldn't log in.")
 
     def showAllUsrs(self):
         iq = self.Iq()
@@ -198,11 +202,11 @@ class Client(ClientXMPP):
 
     def sendMsg(self, jid, msg):
         self.send_message(mto=jid, mbody=msg, mtype='chat')
-        print("Message sent to user " + jid + "!")
+        print("Message sent to user " + str(jid) + "!")
 
     def sendGroupMsg(self, room, msg):
         self.send_message(mto=room, mbody=msg, mtype='groupchat')
-        print("Message sent to room " + room + "!")
+        print("Message sent to room " + str(room) + "!")
 
     def joinCreateRoom(self, room, nick):
         self.plugin['xep_0045'].joinMUC(room, nick, wait=True)
@@ -211,7 +215,7 @@ class Client(ClientXMPP):
     """ NOTIFS/PRESENCE HANDLERS """
     def addUser(self, jid):
         self.send_presence_subscription(pto=jid)
-        print("User added! " + jid)
+        print("User added! " + str(jid))
 
     def jid_to_user(self, jid):
         jid = str(jid)
@@ -219,12 +223,12 @@ class Client(ClientXMPP):
 
     def presence_subscribe(self, presence):
         person = self.jid_to_user(presence['from'])
-        print('-- %s added-- ' %(person))
+        print('-- %s added -- ' %(person))
         self.sendMsg(presence['from'], 'gracias por agregarme en tu lista, salu2!')
 
     def presence_unsubscribe(self, presence):
          person = self.jid_to_user(presence['from'])
-         print('-- %s removed-- ' %(person))
+         print('-- %s removed -- ' %(person))
 
     # Extraido de https://github.com/fritzy/SleekXMPP/blob/develop/examples/roster_browser.py
     def showRoster(self):
@@ -319,12 +323,14 @@ if __name__ == '__main__':
     
     xmpp = Client(args.nick + domain, args.password)
     
+    # Menu base que solo le deja al usuario hacer estas tres cosas
     menu = """
         1. Registrar cuenta en el servidor.
         2. Iniciar sesion.
         15. Cerrar sesion.
     """
 
+    # Segundo menu cuando el usuario ya esta logged in
     logged_menu = """
         3. Eliminar cuenta.
         4. Agregar usuario a lista de contactos.
@@ -341,9 +347,11 @@ if __name__ == '__main__':
 
     # Inicializar esto en numero cualquiera
     opt = 99
+    # Para saber si el usuario ya inicio sesion.
     logged = False
 
     while opt != "15":
+        # Very lazy approach a un cambio de menu, pero lo demas funciona bien asi que...
         if (logged):
             opts = logged_menu
         else:
@@ -394,7 +402,7 @@ if __name__ == '__main__':
         elif opt=="9":
             group = input("Escriba el nombre del grupo: ")
             msg = input("Escriba el mensaje a escribir: ")
-            xmpp.sendGroupMsg(group, msg)         
+            xmpp.sendGroupMsg(group+"@conference.redes2020.xyz", msg)         
         elif opt=="10":
             print("""
                 Estados:
@@ -410,7 +418,7 @@ if __name__ == '__main__':
         elif opt=="11":
             room = input("Ingrese nombre de cuarto/grupo: ")
             nick = input("Ingrese su nickname o apodo: ")
-            xmpp.joinCreateRoom(room, nick)
+            xmpp.joinCreateRoom(room+"@conference.redes2020.xyz", nick)
         elif opt=="12":
             recipient = input("Escriba el nombre del receptor: ")
             file = input("Escriba el nombre del archivo: ")
